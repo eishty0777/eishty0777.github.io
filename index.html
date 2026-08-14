@@ -28,11 +28,38 @@
             line-height: 1.6;
         }
         header {
-            background-color: var(--primary-color);
-            color: white;
-            text-align: center;
-            padding: 3rem 1rem;
-        }
+    position: relative;
+    overflow: hidden;
+
+    background-color: var(--primary-color);
+    color: white;
+    text-align: center;
+    padding: 3rem 1rem;
+
+    min-height: 360px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Animation Canvas */
+#dataCanvas {
+    position: absolute;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    z-index: 0;
+}
+
+/* Keep header content above animation */
+header > *:not(#dataCanvas) {
+    position: relative;
+    z-index: 2;
+}
         .profile-img {
             width: 200px;
             height: 200px;
@@ -98,8 +125,15 @@
 <body>
 
     <header>
-        <!-- Ensure your image file is in the same folder and named exactly as below -->
-        <img src="Messenger_creation_43475EF4-6F7A-4EE6-86DE-F17526E01903.jpeg" alt="Md. Shariar Nafis" class="profile-img">
+
+    <!-- Animated Data Background -->
+    <canvas id="dataCanvas"></canvas>
+
+    <!-- Profile -->
+    <img src="Messenger_creation_43475EF4-6F7A-4EE6-86DE-F17526E01903.jpeg"
+         alt="Md. Shariar Nafis"
+         class="profile-img">
+
         <h1>Md. Shariar Nafis</h1>
         <h2>Data & Decisions | Applied Statistics & Data Science</h2>
         
@@ -140,6 +174,407 @@
             </div>
         </div>
     </div>
+<script>
 
+const canvas = document.getElementById("dataCanvas");
+const ctx = canvas.getContext("2d");
+
+let width;
+let height;
+let particles = [];
+
+let mouse = {
+    x: null,
+    y: null,
+    active: false
+};
+
+
+/* =========================
+   RESIZE CANVAS
+========================= */
+
+function resizeCanvas() {
+
+    const rect = canvas.parentElement.getBoundingClientRect();
+
+    width = rect.width;
+    height = rect.height;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    createParticles();
+}
+
+
+/* =========================
+   CREATE DATA POINTS
+========================= */
+
+function createParticles() {
+
+    const numberOfParticles = Math.min(
+        70,
+        Math.max(30, Math.floor(width / 18))
+    );
+
+    particles = [];
+
+    for (let i = 0; i < numberOfParticles; i++) {
+
+        particles.push({
+
+            x: Math.random() * width,
+
+            y: Math.random() * height,
+
+            vx: (Math.random() - 0.5) * 0.6,
+
+            vy: (Math.random() - 0.5) * 0.6,
+
+            radius: Math.random() * 2 + 1,
+
+            pulse: Math.random() * Math.PI * 2
+
+        });
+
+    }
+}
+
+
+/* =========================
+   UPDATE PARTICLES
+========================= */
+
+function updateParticles() {
+
+    particles.forEach(p => {
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        p.pulse += 0.03;
+
+
+        /* Bounce from edges */
+
+        if (p.x <= 0 || p.x >= width) {
+            p.vx *= -1;
+        }
+
+        if (p.y <= 0 || p.y >= height) {
+            p.vy *= -1;
+        }
+
+
+        /* Mouse interaction */
+
+        if (mouse.active) {
+
+            const dx = mouse.x - p.x;
+            const dy = mouse.y - p.y;
+
+            const distance = Math.sqrt(
+                dx * dx + dy * dy
+            );
+
+
+            if (distance < 130 && distance > 1) {
+
+                const force = 0.015;
+
+                p.vx += (dx / distance) * force;
+                p.vy += (dy / distance) * force;
+
+            }
+
+        }
+
+
+        /* Prevent particles becoming too fast */
+
+        const speed = Math.sqrt(
+            p.vx * p.vx +
+            p.vy * p.vy
+        );
+
+        if (speed > 1) {
+
+            p.vx *= 0.98;
+            p.vy *= 0.98;
+
+        }
+
+    });
+}
+
+
+/* =========================
+   DRAW CONNECTIONS
+========================= */
+
+function drawConnections() {
+
+    const connectionDistance = 120;
+
+
+    for (let i = 0; i < particles.length; i++) {
+
+        for (let j = i + 1; j < particles.length; j++) {
+
+            const a = particles[i];
+            const b = particles[j];
+
+
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+
+            const distance = Math.sqrt(
+                dx * dx + dy * dy
+            );
+
+
+            if (distance < connectionDistance) {
+
+                const opacity =
+                    (1 - distance / connectionDistance) * 0.35;
+
+
+                ctx.strokeStyle =
+                    `rgba(52, 152, 219, ${opacity})`;
+
+                ctx.lineWidth = 1;
+
+
+                ctx.beginPath();
+
+                ctx.moveTo(a.x, a.y);
+
+                ctx.lineTo(b.x, b.y);
+
+                ctx.stroke();
+
+            }
+
+        }
+
+    }
+
+}
+
+
+/* =========================
+   DRAW PARTICLES
+========================= */
+
+function drawParticles() {
+
+    particles.forEach(p => {
+
+        const pulse =
+            Math.sin(p.pulse) * 0.5;
+
+
+        /* Glow */
+
+        ctx.beginPath();
+
+        ctx.arc(
+            p.x,
+            p.y,
+            (p.radius + pulse) * 3,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            "rgba(52, 152, 219, 0.08)";
+
+        ctx.fill();
+
+
+        /* Main point */
+
+        ctx.beginPath();
+
+        ctx.arc(
+            p.x,
+            p.y,
+            p.radius + pulse,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            "rgba(150, 210, 255, 0.9)";
+
+        ctx.fill();
+
+    });
+
+}
+
+
+/* =========================
+   MOUSE EFFECT
+========================= */
+
+function drawMouseEffect() {
+
+    if (!mouse.active) return;
+
+
+    const gradient =
+        ctx.createRadialGradient(
+            mouse.x,
+            mouse.y,
+            0,
+            mouse.x,
+            mouse.y,
+            100
+        );
+
+
+    gradient.addColorStop(
+        0,
+        "rgba(52, 152, 219, 0.15)"
+    );
+
+    gradient.addColorStop(
+        1,
+        "rgba(52, 152, 219, 0)"
+    );
+
+
+    ctx.fillStyle = gradient;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        mouse.x,
+        mouse.y,
+        100,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+}
+
+
+/* =========================
+   ANIMATION LOOP
+========================= */
+
+function animate() {
+
+    ctx.clearRect(
+        0,
+        0,
+        width,
+        height
+    );
+
+
+    updateParticles();
+
+    drawConnections();
+
+    drawParticles();
+
+    drawMouseEffect();
+
+
+    requestAnimationFrame(animate);
+
+}
+
+
+/* =========================
+   MOUSE EVENTS
+========================= */
+
+canvas.addEventListener(
+    "mousemove",
+    function(e) {
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        mouse.x =
+            e.clientX - rect.left;
+
+        mouse.y =
+            e.clientY - rect.top;
+
+        mouse.active = true;
+
+    }
+);
+
+
+canvas.addEventListener(
+    "mouseleave",
+    function() {
+
+        mouse.active = false;
+
+    }
+);
+
+
+/* =========================
+   TOUCH SUPPORT
+========================= */
+
+canvas.addEventListener(
+    "touchmove",
+    function(e) {
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        const touch =
+            e.touches[0];
+
+        mouse.x =
+            touch.clientX - rect.left;
+
+        mouse.y =
+            touch.clientY - rect.top;
+
+        mouse.active = true;
+
+    },
+    { passive: true }
+);
+
+
+canvas.addEventListener(
+    "touchend",
+    function() {
+
+        mouse.active = false;
+
+    }
+);
+
+
+/* =========================
+   START
+========================= */
+
+window.addEventListener(
+    "resize",
+    resizeCanvas
+);
+
+resizeCanvas();
+
+animate();
+
+</script>
 </body>
 </html>
